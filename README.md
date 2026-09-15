@@ -43,7 +43,7 @@ Evaluation used the notebook's fixed settings before and after training: the sam
 **Change in mean score: +172.0 (+35%).** Four of the five games improved; seed 404 fell from 800 to 590. No game hit the time limit, before or after: every game ended at game over.
 
 **Expectations vs. Observations:**
-I expected lower exploration and a smaller learning rate to produce steadier learning than my previous run, and a mean score somewhere above it, but I was not confident the agent would beat a baseline that is partly luck.
+I expected that less randomness would lead to better results, because more of the agent's moves would be based on the logic it had learned instead of chance. I also expected more iterations to lead to higher scores, since the agent keeps getting trained over time.
 
 What I observed was a larger improvement than expected, and more consistent play. The trained scores fall in a 580–850 band, while my previous run ranged from 150 to 920 — its high average depended on one good game. The agent also survives longer: about 696 decisions per game versus 564 before, roughly 23% more game time. Seed 202 is the clearest example, going from 345 decisions and 150 points in the previous run to 825 decisions and 850 points here.
 
