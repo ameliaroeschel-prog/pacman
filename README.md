@@ -8,14 +8,16 @@ This repository contains a Deep Q-Network (DQN) agent trained to play Ms. Pac-Ma
 2. If using Colab, select a GPU runtime (**Runtime → Change runtime type → T4 GPU**).
 3. The hyperparameters are pre-set in Section 1. Select **Run All** to execute the notebook from top to bottom. Setup, baseline evaluation, training, final evaluation, and the results ZIP download run automatically.
 
-The notebook is saved with all outputs from the submitted run, so the scores, plots, and gameplay can be inspected without rerunning it. Only the three settings in Section 1 were changed; every other setting is the notebook default, recorded in [config.json](results/config.json).
+The notebook is saved with all outputs from the submitted run, so the scores, plots, and gameplay can be inspected without rerunning it. Only the three settings in Section 1 were changed across my experiments; every other setting is the notebook default, recorded in [config.json](results/config.json).
 
 ---
 
 ## ⚙️ Hyperparameters
-* **Exploration Rate:** `0.10` - My earlier run used 25%, which meant one move in four was a coin flip. In Ms. Pac-Man a random turn frequently walks straight into a ghost, so games ended early and the agent rarely saw the later part of a maze. Exploration is also fixed at 5% during evaluation, so training nearer that value practices the behavior being graded. 0.10 is the value the original DQN paper settled on.
-* **Episodes:** `250` - 2.5× my previous budget, chosen to give the network meaningfully more experience (37,419 learning updates instead of 14,706) while still finishing inside one Colab session. Training took under 10 minutes.
-* **Learning Rate:** `0.0001` - My earlier run used 0.0002 and its loss climbed while training scores fell, which suggested each update was too large for a replay memory holding only 5,000 decisions. I halved it to the notebook's reference value to make learning steadier.
+* **Exploration Rate:** `0.09` - I lowered exploration across my runs, from 0.25 to 0.10 and finally to 0.09. In Ms. Pac-Man a random turn often walks straight into a ghost, so a high random rate ends games early and the agent rarely sees the later part of a maze. The agent is also evaluated at 5% exploration, so training nearer that value practices the behavior being graded. I kept it above 5% so the agent still had some pressure to try alternatives, since exploration is fixed for the whole run rather than decaying.
+* **Episodes:** `1000` - My previous run's training scores were still trending upward when it ended at 250 episodes, which suggested the agent had not finished learning. Quadrupling the budget produced 148,477 learning updates instead of 37,419, and still finished in under 40 minutes on a Colab T4.
+* **Learning Rate:** `0.0001` - An earlier run at 0.0002 showed loss climbing while training scores fell, which suggested each update was too large for a replay memory holding only 5,000 decisions. At 0.0001 learning became steadier, so I held it fixed for my last two runs.
+
+Note that this run changed **two** settings from my previous one (exploration 0.10 → 0.09 and episodes 250 → 1000), so the improvement below cannot be attributed to the episode budget alone.
 
 ---
 
@@ -33,54 +35,56 @@ Evaluation used the notebook's fixed settings before and after training: the sam
 
 | Evaluation Game | Baseline (Untrained) Score | Trained Score |
 | :--- | :--- | :--- |
-| **Seed 101** | 350 | 640 |
-| **Seed 202** | 500 | 850 |
-| **Seed 303** | 320 | 580 |
-| **Seed 404** | 800 | 590 |
-| **Seed 505** | 490 | 660 |
-| **MEAN SCORE** | **492.0** | **664.0** |
+| **Seed 101** | 350 | 970 |
+| **Seed 202** | 500 | 560 |
+| **Seed 303** | 320 | 810 |
+| **Seed 404** | 800 | 2150 |
+| **Seed 505** | 490 | 870 |
+| **MEAN SCORE** | **492.0** | **1072.0** |
 
-**Change in mean score: +172.0 (+35%).** Four of the five games improved; seed 404 fell from 800 to 590. No game hit the time limit, before or after: every game ended at game over.
+**Change in mean score: +580.0 (+118%).** All five games improved, which none of my earlier runs achieved. No game hit the time limit, before or after: every game ended at game over.
+
+One caveat on the mean: seed 404's 2,150 is a single unusually good game that lifts the average. Excluding it, the remaining four games still average 802.5 against a 490 baseline for the same seeds, so the improvement does not depend on that one result.
 
 **Expectations vs. Observations:**
 I expected that less randomness would lead to better results, because more of the agent's moves would be based on the logic it had learned instead of chance. I also expected more iterations to lead to higher scores, since the agent keeps getting trained over time.
 
-What I observed was a larger improvement than expected, and more consistent play. The trained scores fall in a 580–850 band, while my previous run ranged from 150 to 920 — its high average depended on one good game. The agent also survives longer: about 696 decisions per game versus 564 before, roughly 23% more game time. Seed 202 is the clearest example, going from 345 decisions and 150 points in the previous run to 825 decisions and 850 points here.
+Both expectations held, but not evenly. The trained mean roughly doubled the baseline, and the agent scores noticeably faster: in the best game it collects 500 points within the first 20 seconds, against 230 in my 250-episode run and 210 in my 100-episode run. Survival time barely moved, about 683 decisions per evaluation game versus 696 before, so the gain came from scoring more efficiently in the time it had, not from living longer.
 
-The training dashboard shows the 25-game average rising from about 480 to a peak near 890 around episode 205, ending near 725. The best single training game scored 2,130.
+The second expectation held only for the first half of training. The 25-game average climbed from roughly 480 to a 750–900 band by about episode 400, then oscillated inside that band for the remaining 600 games without a clear upward trend. More games kept helping until they didn't.
 
-**Loss rose while play improved.** Mean update loss climbed from about 0.02 to 0.14. That is not a failure: loss measures the gap between predicted and target values, and as the agent finds larger rewards, its value estimates grow and the gap grows with them. Judging this run by loss alone would have been misleading in the opposite direction from the usual warning.
-
-In the gameplay, the trained agent keeps collecting points across the whole 20-second clip rather than stalling after its first burst, which is what my previous run did. Its opening moves still look much like the untrained agent's; the differences show up later in a game.
+**Loss behaved differently this time.** Mean update loss rose to about 0.12 by episode 200 and then flattened, instead of climbing throughout as it did in my 250-episode run. Rising loss is not automatically bad here: it measures the gap between predicted and target values, and that gap grows as the agent starts finding bigger rewards. A loss curve that levels off while scores hold up is what a settling agent looks like.
 
 ### Experiment Log
-All three runs used the same evaluation settings, so their trained means are directly comparable.
+All four runs used identical evaluation settings, so their trained means are directly comparable. The baseline is the same every time because the starting weights come from a fixed seed.
 
-| Run | Exploration | Episodes | Learning rate | Baseline mean | Trained mean |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 (setup check) | 0.25 | 5 | 0.0002 | 492.0 | 730.0 |
-| 2 | 0.25 | 100 | 0.0002 | 492.0 | 534.0 |
-| **3 (submitted)** | **0.10** | **250** | **0.0001** | **492.0** | **664.0** |
+| Run | Exploration | Episodes | Learning rate | Learning updates | Baseline mean | Trained mean |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 (setup check) | 0.25 | 5 | 0.0002 | 539 | 492.0 | 730.0 |
+| 2 | 0.25 | 100 | 0.0002 | 14,706 | 492.0 | 534.0 |
+| 3 | 0.10 | 250 | 0.0001 | 37,419 | 492.0 | 664.0 |
+| **4 (submitted)** | **0.09** | **1000** | **0.0001** | **148,477** | **492.0** | **1072.0** |
 
-The baseline is identical every time because the starting weights come from a fixed seed. Run 1 was a 5-episode setup check with only 539 learning updates, so its 730 reflects luck in five games rather than learning — a useful reminder of how noisy a five-game evaluation is. Run 2 trained longer but got worse, which is what prompted the changes above.
+Run 1 was a five-episode setup check with only 539 learning updates, so its 730 reflects luck across five games rather than learning — a useful reminder of how noisy a five-game evaluation is. Run 2 trained 20× longer and scored worse, which is what prompted lowering both exploration and the learning rate. Runs 3 and 4 then improved steadily.
 
 ---
 
 ## 📈 Training Statistics & Hardware
-* **Run status:** Completed (not interrupted). Run ID `20260915_230142_498415`.
+* **Run status:** Completed (not interrupted). Run ID `20260915_231634_675837`.
 * **Hardware Used:** NVIDIA T4 GPU (CUDA) via Google Colab. Exact Python and package versions are recorded in [config.json](results/config.json).
-* **Completed Episodes:** 250 of 250
-* **Total Decisions (Steps):** 150,674
-* **Total Learning Updates:** 37,419
-* **Elapsed Training Time:** 568 seconds (about 9.5 minutes, including the periodic gameplay samples)
+* **Completed Episodes:** 1,000 of 1,000
+* **Total Decisions (Steps):** 594,907
+* **Total Learning Updates:** 148,477
+* **Elapsed Training Time:** 2,265 seconds (37.8 minutes, including the periodic gameplay samples)
+* **Best single training game:** 4,020 points
 
 Source: [training_summary.json](results/training_summary.json)
 
 ---
 
 ## 🔬 Limitations & Next Steps
-* **Observed Limitation:** The agent's improvement is real but shallow, and it is still inconsistent from game to game. Seed 404 got worse, not better, and the progress samples swing wildly between single games (160 at episode 175, then 1,420 at episode 200). A likely cause is memory: the agent remembers only its last 5,000 decisions, roughly 8 games, so it keeps learning from a small slice of recent experience rather than everything it has seen. Watching the clips, it collects the dots near where it starts but has no apparent strategy for clearing a maze or for using power pellets to chase ghosts.
-* **Next Experiment:** I would change only the **Episodes** setting, from `250` to `1000`, keeping exploration at 0.10 and the learning rate at 0.0001. The 25-game average was still trending upward when this run ended, which suggests the agent had not finished learning. Keeping the other two settings fixed means any change in the trained mean can be attributed to the longer budget alone. If more games alone stop helping, the next lever would be the replay memory rather than the three dials.
+* **Observed Limitation:** Learning plateaued. After roughly episode 400 the 25-game average stopped trending upward, even though training continued for 600 more games, and the agent stayed inconsistent: its progress samples swing between 250 and 1,930 points on the same seed, and seed 202 scored 560 here against 850 in my shorter run. The likely cause is memory rather than practice. The agent remembers only its last 5,000 decisions, about eight games, so late in training it is still learning from a narrow slice of recent experience and cannot revisit the rare good games that would teach it the most. Watching the clips, it clears dots efficiently near where it starts but shows no sign of a plan for finishing a maze or for using power pellets to hunt ghosts.
+* **Next Experiment:** I would change only the **replay memory size**, from `5,000` to `50,000` decisions, keeping exploration at 0.09, episodes at 1,000, and the learning rate at 0.0001. The assignment allows tuning settings beyond the three main dials as long as the change is explained, and the plateau above points at memory as the binding constraint rather than the amount of play. A ten-times-larger memory would let the agent keep learning from roughly 80 past games instead of 8. I would expect the 25-game average to keep climbing past episode 400 instead of flattening, and I would watch whether the evaluation scores become less erratic across the five seeds.
 
 ---
 
@@ -93,18 +97,18 @@ First evaluation game (seed 101), before any training:
 ![Untrained Agent](results/untrained.gif)
 
 ### Best Trained Gameplay
-Highest-scoring of the five final evaluation games (seed 202, 850 points):
+Highest-scoring of the five final evaluation games (seed 404, 2,150 points):
 
 ![Best Trained Agent](results/best_trained.gif)
 
-### Intermediate Gameplay (every 25 episodes)
-Each sample plays seed 101 with the network as it stood at that episode. These are single games, so their scores are noisy; the evaluation table above is the evidence.
+### Intermediate Gameplay
+This run saved a sample every 25 episodes, 40 in total. All of them are in the [results folder](results); shown below is every 100th episode. Each plays seed 101 with the network as it stood at that episode. These are single games, so their scores are noisy — the evaluation table above is the evidence.
 
-| After 25 (440) | After 50 (930) | After 75 (440) | After 100 (480) | After 125 (700) |
+| After 100 (720) | After 200 (600) | After 300 (430) | After 400 (410) | After 500 (500) |
 | :---: | :---: | :---: | :---: | :---: |
-| ![25](results/episode_0025.gif) | ![50](results/episode_0050.gif) | ![75](results/episode_0075.gif) | ![100](results/episode_0100.gif) | ![125](results/episode_0125.gif) |
-| **After 150 (390)** | **After 175 (160)** | **After 200 (1420)** | **After 225 (420)** | **After 250 (640)** |
-| ![150](results/episode_0150.gif) | ![175](results/episode_0175.gif) | ![200](results/episode_0200.gif) | ![225](results/episode_0225.gif) | ![250](results/episode_0250.gif) |
+| ![100](results/episode_0100.gif) | ![200](results/episode_0200.gif) | ![300](results/episode_0300.gif) | ![400](results/episode_0400.gif) | ![500](results/episode_0500.gif) |
+| **After 600 (1350)** | **After 700 (920)** | **After 800 (520)** | **After 900 (720)** | **After 1000 (970)** |
+| ![600](results/episode_0600.gif) | ![700](results/episode_0700.gif) | ![800](results/episode_0800.gif) | ![900](results/episode_0900.gif) | ![1000](results/episode_1000.gif) |
 
 ### Training Dashboard
 Raw score per game with a 25-game average, mean update loss, and exploration:
@@ -119,4 +123,4 @@ Raw score per game with a 25-game average, mean update loss, and exploration:
 * [training_summary.json](results/training_summary.json)
 
 ### Model Checkpoints
-Model checkpoints (`untrained.pt`, `episode_0025.pt` through `episode_0250.pt`, and `trained.pt`, about 6 MB each) are kept out of this repository to keep it small. They are saved in the full results ZIP for run `20260915_230142_498415`, which I keep locally.
+Model checkpoints (`untrained.pt`, 40 periodic checkpoints, and `trained.pt`, about 6 MB each) are kept out of this repository to keep it small. They are saved in the full results ZIP for run `20260915_231634_675837`, which I keep locally.
